@@ -23,7 +23,7 @@ All data is **fully synthetic**. `generate_synthetic.py` produces the sample CSV
 The app is static — just open `public/index.html`, or serve the `public/` folder. Regenerate the sample data with:
 
 ```
-python generate_synthetic.py
+python3 generate_synthetic.py
 ```
 
 Part of [pyaar project](https://pyaarproject.org/artifacts).

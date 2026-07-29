@@ -25,7 +25,7 @@ HOSPITALS = [
 ]
 PATHOLOGISTS = ["Adrienne Coyle", "Marcus Halloway", "Priya Venkataraman", "Devon Ashcroft",
                 "Renata Solberg", "Tobias Whitfield", "Nadia Karim", "Elliot Ransome"]
-CLINICIANS = ["Harold Merriweather", "Simone Delacroix", "Owen Castellano", " Imani Okoro",
+CLINICIANS = ["Harold Merriweather", "Simone Delacroix", "Owen Castellano", "Imani Okoro",
               "Grant Fairbanks", "Lucia Montenegro", "Karl Ostrander", "Beatrice Nwosu"]
 FIRST = ["Rowan", "Delia", "Marcus", "Yusuf", "Camille", "Theo", "Priscilla", "Hassan",
          "Louisa", "Emilio", "Greta", "Desmond", "Anaya", "Roland", "Petra", "Silas"]
