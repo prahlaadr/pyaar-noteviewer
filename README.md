@@ -6,6 +6,14 @@ Human-in-the-loop review is built in: flag any row and add a free-text annotatio
 
 **Live demo:** https://pyaar-noteviewer.vercel.app
 
+## Features
+
+- Linked panels: original note, the LLM pass, and structured results with every value anchored to its source span
+- In-note search with match highlighting
+- Flag + free-text annotate per row, persisted in `localStorage`
+- Download annotated CSV (adds `flagged` and `annotation` columns)
+- Sortable table, bring your own CSV, no build step
+
 ## Data
 
 All data is **fully synthetic**. `generate_synthetic.py` produces the sample CSV from fake names, random MRNs/dates, and authored prose (deterministic seed). No real patient data is used, and every extracted `span` is a verbatim quote of its synthetic note so the pipeline view renders.
