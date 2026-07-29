@@ -1,0 +1,4 @@
+_source/
+generate_synthetic.py
+*.md
+.gitignore

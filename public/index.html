@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Karma:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap">
+    <title>pyaar note viewer</title>
+    <style>
+        /* ── pyaar brand · Kerala mural palette (matches harmonize template) ── */
+        :root {
+            --background:#e8dfc8;      /* Kasavu cream */
+            --foreground:#3d3d3a;      /* Charcoal */
+            --secondary:#525250;
+            --muted:#9b9b95;           /* Elephant grey */
+            --border:#c7bfa8;          /* warm tan */
+            --surface:#f5ecd5;
+            --surface-alt:#e3d9bf;
+            --accent:#8b3530;          /* Madder red */
+            --accent-foreground:#e8dfc8;
+            --accent-light:#eccbc4;
+            --brand-green:#1c2e22;     /* Plantation */
+            --saffron:#d4a642;
+            --spice:#c26b3e;
+            --font-serif:'Karma',ui-serif,Georgia,serif;
+            --font-sans:'General Sans',system-ui,-apple-system,sans-serif;
+        }
+
+        * { box-sizing:border-box; }
+
+        html, body {
+            height:100%;
+            margin:0;
+            padding:0;
+            font-family:var(--font-sans);
+            background-color:var(--background);
+            color:var(--foreground);
+            -webkit-font-smoothing:antialiased;
+            text-rendering:optimizeLegibility;
+        }
+
+        body { padding:0; }
+
+        .container {
+            max-width:1400px; margin:0 auto;
+            height:100vh;
+            padding:28px 32px;
+            background-color:var(--background);
+            display:flex; flex-direction:column;
+        }
+
+        .header { margin-bottom:16px; flex-shrink:0; }
+        .header .eyebrow {
+            font-size:12px; font-weight:600; text-transform:uppercase;
+            letter-spacing:0.18em; color:var(--accent); display:block; margin-bottom:6px;
+        }
+        .header h1 {
+            font-family:var(--font-serif); font-weight:500; letter-spacing:-0.015em;
+            font-size:34px; margin:0 0 6px; color:var(--foreground);
+        }
+        .header p { font-size:13px; margin:0; color:var(--secondary); max-width:80ch; }
+
+        .file-input {
+            margin-bottom:12px; padding:10px 14px;
+            border:1px dashed var(--border); border-radius:6px;
+            display:flex; align-items:center; gap:15px;
+            background-color:var(--surface); flex-shrink:0; font-size:13px; color:var(--secondary);
+        }
+        .file-input input[type=file] { font-family:var(--font-sans); font-size:13px; color:var(--foreground); }
+        .file-input input[type=file]::file-selector-button {
+            font-family:var(--font-sans); font-size:12px; font-weight:500;
+            background:var(--accent); color:var(--accent-foreground);
+            border:none; border-radius:4px; padding:6px 12px; margin-right:10px; cursor:pointer;
+        }
+
+        #messages { flex-shrink:0; }
+
+        .row-count {
+            margin-left:auto; font-weight:600; color:var(--accent);
+            background-color:var(--accent-light); padding:4px 10px;
+            border-radius:4px; font-size:13px;
+        }
+
+        .content { display:flex; gap:20px; flex:1; min-height:0; }
+
+        .table-container {
+            flex:2; overflow:auto; border:1px solid var(--border);
+            border-radius:6px; min-height:0; position:relative; background:var(--surface);
+        }
+
+        .note-container {
+            flex:1; border:1px solid var(--border); border-radius:6px;
+            padding:16px; background-color:var(--surface);
+            display:flex; flex-direction:column; min-height:0;
+        }
+
+        table { width:100%; border-collapse:collapse; font-size:13px; position:relative; }
+        th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; }
+        th {
+            background-color:var(--surface-alt); font-weight:600; color:var(--foreground);
+            position:sticky; top:0; z-index:10;
+        }
+        th.sticky-left { position:sticky; left:0; z-index:11; box-shadow:2px 0 4px rgba(28,46,34,0.08); }
+        td.sticky-left { position:sticky; left:0; background-color:var(--surface); z-index:5; box-shadow:2px 0 4px rgba(28,46,34,0.08); }
+        tr:nth-child(even) td.sticky-left { background-color:#efe6cd; }
+        tr:hover td.sticky-left { background-color:var(--accent-light); }
+        tr.selected-row td.sticky-left { background-color:var(--accent-light) !important; }
+
+        th.sortable { cursor:pointer; user-select:none; position:relative; padding-right:20px; }
+        th.sortable:hover { background-color:#d8cdaf; }
+        th.sortable::after { content:'\2195'; position:absolute; right:8px; top:50%; transform:translateY(-50%); opacity:0.4; font-size:12px; }
+        th.sortable.sort-asc::after { content:'\2191'; opacity:1; color:var(--accent); }
+        th.sortable.sort-desc::after { content:'\2193'; opacity:1; color:var(--accent); }
+
+        tr:nth-child(even) { background-color:#efe6cd; }
+        tr:hover { background-color:var(--accent-light); }
+        tr.selected-row { background-color:var(--accent-light) !important; border-left:4px solid var(--accent); }
+        tr.selected-row:hover { background-color:var(--accent-light) !important; }
+
+        .view-button {
+            background-color:var(--accent); color:var(--accent-foreground); border:none;
+            padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;
+            font-family:var(--font-sans); font-weight:500;
+        }
+        .view-button:hover { background-color:#732b27; }
+
+        .note-text {
+            width:100%; flex:1; border:1px solid var(--border); border-radius:6px;
+            padding:12px; font-family:var(--font-sans); font-size:13px; line-height:1.5;
+            overflow-y:auto; background-color:var(--background); min-height:0;
+        }
+
+        .results-list { display:flex; flex-direction:column; gap:8px; }
+        .result-item { background-color:var(--surface); border:1px solid var(--border); border-radius:6px; padding:8px 12px; }
+        .result-main-line { margin-bottom:4px; }
+        .result-name { font-weight:600; color:var(--accent); font-size:14px; display:inline; }
+        .result-value { color:var(--brand-green); font-weight:500; font-size:14px; display:inline; margin-left:8px; }
+        .result-span { color:var(--secondary); font-size:13px; font-style:italic; line-height:1.4; }
+
+        .note-section { margin-bottom:20px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+        .section-header { background-color:var(--brand-green); color:var(--background); padding:12px 15px; font-weight:600; font-size:15px; margin:0; font-family:var(--font-serif); letter-spacing:-0.01em; }
+        .section-content { padding:15px; background-color:var(--surface); }
+        .subsection-header { font-weight:600; font-size:13px; color:var(--secondary); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:0.06em; }
+        .subsection-content { margin-bottom:15px; }
+        .subsection-content:last-child { margin-bottom:0; }
+        .procedure-info, .original-note-text {
+            font-family:ui-monospace,'SF Mono',Menlo,monospace; white-space:pre-wrap;
+            background-color:var(--surface-alt); padding:12px; border-radius:6px;
+            border:1px solid var(--border); color:var(--foreground); font-size:12.5px; line-height:1.5;
+        }
+
+        .search-container { display:flex; align-items:center; gap:8px; padding:6px 8px; background-color:var(--surface-alt); border:1px solid var(--border); border-radius:6px; flex-shrink:0; min-width:0; }
+        #searchBox { width:200px; padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; font-family:var(--font-sans); background:var(--background); color:var(--foreground); }
+        #searchBox:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(139,53,48,0.2); }
+        #clearSearch { background-color:var(--muted); color:var(--background); border:none; border-radius:4px; width:20px; height:20px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; }
+        #clearSearch:hover { background-color:var(--accent); }
+        .search-stats { font-size:11px; color:var(--muted); min-width:60px; white-space:nowrap; }
+
+        .highlight { background-color:var(--saffron); color:var(--foreground); padding:1px 2px; border-radius:2px; }
+        .highlight.current { background-color:var(--spice); color:var(--background); }
+
+        .note-header { font-weight:600; margin-bottom:12px; color:var(--foreground); flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:15px; }
+        .note-header-title { font-size:15px; font-family:var(--font-serif); font-weight:500; }
+        .no-note { color:var(--muted); font-style:italic; display:flex; align-items:center; justify-content:center; height:100%; }
+
+        .error { color:#fff; margin:10px 0; padding:10px; background-color:var(--accent); border-radius:6px; }
+        .info { color:var(--background); margin:10px 0; padding:10px; background-color:var(--brand-green); border-radius:6px; }
+
+        /* ── Marking + saving ── */
+        .toolbar-btn { background:var(--accent); color:var(--accent-foreground); border:none; padding:7px 14px; border-radius:6px; font-size:13px; font-weight:500; font-family:var(--font-sans); cursor:pointer; }
+        .toolbar-btn:hover { background:#732b27; }
+        .toolbar-btn:disabled { background:var(--muted); cursor:default; }
+        .mark-count { font-size:12px; color:var(--secondary); white-space:nowrap; }
+        .actions-cell { display:flex; align-items:center; gap:8px; }
+        .flag-check { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; margin:0; }
+        .anno-dot { color:var(--accent); font-size:12px; line-height:1; }
+        tr.flagged-row td { background-color:#f3e7cf; }
+        tr.flagged-row td.sticky-left { background-color:#f3e7cf; border-left:3px solid var(--saffron); }
+        .mark-bar { display:flex; align-items:center; gap:12px; padding:8px 10px; margin-bottom:10px; background:var(--surface-alt); border:1px solid var(--border); border-radius:6px; flex-shrink:0; }
+        .mark-bar.hidden { display:none; }
+        .mark-bar label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; color:var(--foreground); white-space:nowrap; cursor:pointer; }
+        .mark-bar input[type=checkbox] { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; margin:0; }
+        .mark-bar input[type=text] { flex:1; min-width:0; padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; font-family:var(--font-sans); background:var(--background); color:var(--foreground); }
+        .mark-bar input[type=text]:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(139,53,48,0.2); }
+
+        /* ── How this works callout ── */
+        .how-it-works { margin-bottom:12px; border:1px solid var(--border); border-radius:6px; background:var(--surface); flex-shrink:0; }
+        .how-it-works > summary { cursor:pointer; padding:9px 12px; font-size:13px; font-weight:600; color:var(--accent); list-style:none; display:flex; align-items:center; gap:8px; }
+        .how-it-works > summary::-webkit-details-marker { display:none; }
+        .how-it-works > summary::before { content:'\25b8'; font-size:11px; transition:transform .15s; }
+        .how-it-works[open] > summary::before { transform:rotate(90deg); }
+        .how-it-works .how-body { padding:0 12px 12px 12px; font-size:12.5px; line-height:1.55; color:var(--secondary); }
+        .how-it-works .how-body p { margin:0 0 8px; }
+        .how-it-works .how-body p:last-child { margin:0; }
+        .how-it-works .how-body strong { font-weight:600; color:var(--foreground); }
+
+        @media (max-width:768px) {
+            .container { height:auto; min-height:100vh; padding:16px; }
+            .content { flex-direction:column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="eyebrow">clinical notes &middot; ai pipeline</span>
+            <h1>pyaar note viewer</h1>
+            <p>A synthetic sample is loaded automatically. Click "View Note" to see the AI processing pipeline from original text to structured results, or upload your own CSV below. All bundled data is fully synthetic, no real patient information.</p>
+        </div>
+
+        <details class="how-it-works">
+            <summary>How this works</summary>
+            <div class="how-body">
+                <p>An LLM reads an unstructured patient note and pulls the clinical and histologic artifacts it finds (steatosis, ballooning, inflammation, and so on), then reports the <strong>fibrosis stage when one is present</strong> (with its scale, e.g. METAVIR / Ishak) and the <strong>disease the findings are consistent with</strong> (NASH, PBC, autoimmune hepatitis, alcoholic liver disease). Every call points back to the exact span it came from. Annotators review and <strong>mark</strong> each extraction to build ground truth, and that labeled data trains a smaller specialized model (SLM) to do the staging-and-attribution at scale.</p>
+                <p>This viewer is the review step: open a note, see what the model pulled and where, and flag what needs correcting.</p>
+            </div>
+        </details>
+
+        <div class="file-input">
+            <input type="file" id="csvFile" accept=".csv" />
+            <span>Choose a CSV file to load</span>
+            <button id="downloadBtn" class="toolbar-btn" style="margin-left:auto;" disabled>Download annotated CSV</button>
+            <span id="markCount" class="mark-count"></span>
+            <span id="rowCount" class="row-count"></span>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div class="content" id="content" style="display: none;">
+            <div class="table-container">
+                <table id="csvTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            
+            <div class="note-container">
+                <div class="note-header">
+                    <div class="note-header-title">AI Inputs</div>
+                    <div class="search-container">
+                        <input type="text" id="searchBox" placeholder="Search in note text..." />
+                        <button id="clearSearch" title="Clear search">×</button>
+                        <span id="searchStats" class="search-stats"></span>
+                    </div>
+                </div>
+                <div class="mark-bar hidden" id="markBar">
+                    <label><input type="checkbox" id="markFlag"> Flag this note</label>
+                    <input type="text" id="markAnnotation" placeholder="Add annotation (saved in your browser)..." />
+                </div>
+                <div class="note-text no-note" id="noteDisplay">Select a row to view the note text</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let originalCsvData = [];
+        let headers = [];
+        let noteColumnIndex = -1;
+        let originalNoteColumnIndex = -1;
+        let currentSelectedRow = -1;
+        let currentNoteContent = '';
+        let searchHighlights = [];
+        let currentSortColumn = -1;
+        let currentSortDirection = 'asc';
+        let marks = {};
+        let idColumnIndex = 0;
+        let currentRowId = '';
+        const MARKS_KEY = 'pyaar-noteviewer-marks-v1';
+
+        document.getElementById('csvFile').addEventListener('change', handleFile);
+        
+        // Search functionality event listeners
+        document.getElementById('searchBox').addEventListener('input', handleSearch);
+        document.getElementById('clearSearch').addEventListener('click', clearSearch);
+
+        // Marking + annotation persistence (localStorage)
+        marks = loadMarks();
+        document.getElementById('downloadBtn').addEventListener('click', downloadAnnotatedCSV);
+        document.getElementById('markFlag').addEventListener('change', (e) => {
+            if (!currentRowId) return;
+            setMark(currentRowId, { flagged: e.target.checked });
+            syncRowMark(currentRowId);
+            updateMarkStats();
+        });
+        document.getElementById('markAnnotation').addEventListener('input', (e) => {
+            if (!currentRowId) return;
+            setMark(currentRowId, { annotation: e.target.value });
+            syncRowMark(currentRowId);
+        });
+
+        // Auto-load the bundled synthetic sample so the demo works on open.
+        fetch('./sample_notes.csv')
+            .then(r => r.ok ? r.text() : Promise.reject())
+            .then(text => parseCSV(text))
+            .catch(() => {});
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    parseCSV(e.target.result);
+                } catch (error) {
+                    showMessage('Error reading file: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text) {
+            const rows = parseCSVContent(text);
+            
+            if (rows.length < 2) {
+                showMessage('CSV file must have at least a header row and one data row', 'error');
+                return;
+            }
+
+            // Parse header
+            headers = rows[0];
+            noteColumnIndex = headers.findIndex(header => 
+                header.toLowerCase().includes('note_text') || 
+                header.toLowerCase().includes('note text')
+            );
+            
+            originalNoteColumnIndex = headers.findIndex(header => 
+                header.toLowerCase().includes('original_note_text') || 
+                header.toLowerCase().includes('original note text')
+            );
+
+            if (noteColumnIndex === -1) {
+                showMessage('Warning: No "note_text" column found. Looking for any column containing "note"', 'info');
+                noteColumnIndex = headers.findIndex(header => 
+                    header.toLowerCase().includes('note')
+                );
+            }
+
+            // Stable per-row key for marks: prefer an id-like column, else first column
+            idColumnIndex = headers.findIndex(hd => /(^|_)id$/i.test((hd || '').trim()));
+            if (idColumnIndex === -1) idColumnIndex = 0;
+
+            // Get data rows (skip header)
+            csvData = rows.slice(1).filter(row => row.some(cell => cell.trim() !== ''));
+            originalCsvData = [...csvData]; // Keep original order
+
+            if (csvData.length === 0) {
+                showMessage('No data rows found in CSV file', 'error');
+                return;
+            }
+
+            // Reset sorting state
+            currentSortColumn = -1;
+            currentSortDirection = 'asc';
+            
+            displayTable();
+            updateRowCount();
+            // Clear any previous row selection and note display
+            currentSelectedRow = -1;
+            currentRowId = '';
+            document.getElementById('markBar').classList.add('hidden');
+            document.getElementById('downloadBtn').disabled = false;
+            updateMarkStats();
+            const noteDisplay = document.getElementById('noteDisplay');
+            noteDisplay.innerHTML = '<div class="no-note">Select a row to view the note text</div>';
+        }
+
+        function parseCSVContent(text) {
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                if (char === '"') {
+                    if (inQuotes) {
+                        // We're inside quotes, check if next char is also a quote (escape)
+                        if (i + 1 < text.length && text[i + 1] === '"') {
+                            // Escaped quote - add one quote to content and skip both
+                            currentField += '"';
+                            i++; // Skip the next quote
+                        } else {
+                            // End of quoted field
+                            inQuotes = false;
+                        }
+                    } else {
+                        // Start of quoted field
+                        inQuotes = true;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // Field separator outside of quotes
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    // Row separator outside of quotes
+                    if (currentField !== '' || currentRow.length > 0) {
+                        currentRow.push(currentField);
+                        if (currentRow.some(field => field.trim() !== '')) {
+                            rows.push(currentRow);
+                        }
+                        currentRow = [];
+                        currentField = '';
+                    }
+                    // Skip \r\n combinations
+                    if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+                        i++;
+                    }
+                } else if (char !== '\r') {
+                    // Regular character - add to current field (skip standalone \r)
+                    currentField += char;
+                }
+            }
+            
+            // Add the last field and row if there's content
+            if (currentField !== '' || currentRow.length > 0) {
+                currentRow.push(currentField);
+                if (currentRow.some(field => field.trim() !== '')) {
+                    rows.push(currentRow);
+                }
+            }
+            
+            return rows;
+        }
+
+        function displayTable() {
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            
+            // Clear existing content
+            tableHeader.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            // Create header row (exclude note_text column)
+            const headerRow = document.createElement('tr');
+            
+            // Add action column first
+            const actionTh = document.createElement('th');
+            actionTh.textContent = 'Actions';
+            actionTh.style.width = '80px';
+            actionTh.className = 'sticky-left';
+            headerRow.appendChild(actionTh);
+            
+            headers.forEach((header, index) => {
+                if (index !== noteColumnIndex && index !== originalNoteColumnIndex) {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    th.className = 'sortable';
+                    th.setAttribute('data-column-index', index);
+                    th.addEventListener('click', () => sortByColumn(index));
+                    headerRow.appendChild(th);
+                }
+            });
+            tableHeader.appendChild(headerRow);
+
+            // Create data rows
+            renderTableBody();
+
+            // Show the content area
+            document.getElementById('content').style.display = 'flex';
+        }
+
+        function showNote(rowIndex) {
+            const noteDisplay = document.getElementById('noteDisplay');
+            
+            // Clear previous row highlighting
+            if (currentSelectedRow !== -1) {
+                const tableBody = document.getElementById('tableBody');
+                const previousRow = tableBody.children[currentSelectedRow];
+                if (previousRow) {
+                    previousRow.classList.remove('selected-row');
+                }
+            }
+            
+            // Highlight current row
+            const tableBody = document.getElementById('tableBody');
+            const currentRow = tableBody.children[rowIndex];
+            if (currentRow) {
+                currentRow.classList.add('selected-row');
+                currentSelectedRow = rowIndex;
+            }
+
+            // Bind the flag + annotation controls to this row
+            currentRowId = rowId(csvData[rowIndex]);
+            const mk = getMark(currentRowId);
+            document.getElementById('markFlag').checked = !!mk.flagged;
+            document.getElementById('markAnnotation').value = mk.annotation || '';
+            document.getElementById('markBar').classList.remove('hidden');
+            
+            if (noteColumnIndex === -1) {
+                noteDisplay.innerHTML = '<div class="no-note">No note text column found in this CSV file</div>';
+                return;
+            }
+
+            const noteText = csvData[rowIndex][noteColumnIndex] || '';
+            const originalNoteText = originalNoteColumnIndex !== -1 ? (csvData[rowIndex][originalNoteColumnIndex] || '') : '';
+            
+            // Store current note content for search
+            currentNoteContent = { noteText, originalNoteText };
+            
+            // Clear search when displaying new note
+            clearSearch();
+            
+            if (noteText.trim() || originalNoteText.trim()) {
+                const formattedNote = formatNoteWithResults(noteText, originalNoteText);
+                noteDisplay.innerHTML = formattedNote;
+                noteDisplay.className = 'note-text';
+            } else {
+                noteDisplay.innerHTML = '<div class="no-note">No note text available for this row</div>';
+            }
+        }
+
+        function formatNoteWithResults(noteText, originalNoteText, searchTerm = '') {
+            let formattedHtml = '';
+            
+            // Section 1: From LLM to SLM
+            if (noteText.trim()) {
+                formattedHtml += `<div class="note-section">`;
+                formattedHtml += `<div class="section-header">From LLM to SLM</div>`;
+                formattedHtml += `<div class="section-content">`;
+                
+                // Look for results: followed by JSON array in note_text
+                const resultsMatch = noteText.match(/^(.*?)\s*results:\s*(\[.*\])\s*$/s);
+                
+                if (resultsMatch) {
+                    const plainText = resultsMatch[1].trim();
+                    const resultsJson = resultsMatch[2];
+                    
+                    // Procedure Info subsection
+                    formattedHtml += `<div class="subsection-content">`;
+                    formattedHtml += `<div class="subsection-header">Procedure Info</div>`;
+                    formattedHtml += `<div class="procedure-info">${highlightText(plainText, searchTerm)}</div>`;
+                    formattedHtml += `</div>`;
+                    
+                    // Try to parse and display results
+                    try {
+                        const results = JSON.parse(resultsJson);
+                        
+                        formattedHtml += `<div class="subsection-content">`;
+                        formattedHtml += `<div class="subsection-header">Procedure Results</div>`;
+                        formattedHtml += `<div class="results-list">`;
+                        
+                        results.forEach(result => {
+                            formattedHtml += `<div class="result-item">`;
+                            formattedHtml += `<div class="result-main-line">`;
+                            formattedHtml += `<span class="result-name">${highlightText(result.name || '', searchTerm)}:</span>`;
+                            if (result.value) {
+                                formattedHtml += `<span class="result-value">${highlightText(result.value, searchTerm)}</span>`;
+                            }
+                            formattedHtml += `</div>`;
+                            if (result.span) {
+                                formattedHtml += `<div class="result-span">${highlightText(result.span, searchTerm)}</div>`;
+                            }
+                            formattedHtml += `</div>`;
+                        });
+                        
+                        formattedHtml += `</div></div>`;
+                        
+                    } catch (e) {
+                        // If JSON parsing fails, put everything in procedure info
+                        formattedHtml += `<div class="subsection-content">`;
+                        formattedHtml += `<div class="subsection-header">Procedure Info</div>`;
+                        formattedHtml += `<div class="procedure-info">${highlightText(noteText, searchTerm)}</div>`;
+                        formattedHtml += `</div>`;
+                    }
+                } else {
+                    // No results section found, put everything in procedure info
+                    formattedHtml += `<div class="subsection-content">`;
+                    formattedHtml += `<div class="subsection-header">Procedure Info</div>`;
+                    formattedHtml += `<div class="procedure-info">${highlightText(noteText, searchTerm)}</div>`;
+                    formattedHtml += `</div>`;
+                }
+                
+                formattedHtml += `</div></div>`; // Close section-content and note-section
+            }
+            
+            // Section 2: Original Note Text to LLM
+            if (originalNoteText.trim()) {
+                formattedHtml += `<div class="note-section">`;
+                formattedHtml += `<div class="section-header">Original Note Text to LLM</div>`;
+                formattedHtml += `<div class="section-content">`;
+                formattedHtml += `<div class="original-note-text">${highlightText(originalNoteText, searchTerm)}</div>`;
+                formattedHtml += `</div></div>`; // Close section-content and note-section
+            }
+            
+            return formattedHtml || `<div class="no-note">No content available</div>`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateRowCount() {
+            const rowCountElement = document.getElementById('rowCount');
+            if (csvData.length > 0) {
+                rowCountElement.textContent = `${csvData.length} rows loaded`;
+                rowCountElement.style.display = 'block';
+            } else {
+                rowCountElement.textContent = '';
+                rowCountElement.style.display = 'none';
+            }
+        }
+
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            // Auto-remove info messages after 5 seconds
+            if (type === 'info') {
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 5000);
+            }
+        }
+
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchBox').value.trim();
+            if (!searchTerm || !currentNoteContent) {
+                clearHighlights();
+                return;
+            }
+            
+            // Re-render the note with search highlighting
+            const noteDisplay = document.getElementById('noteDisplay');
+            const formattedNote = formatNoteWithResults(
+                currentNoteContent.noteText, 
+                currentNoteContent.originalNoteText, 
+                searchTerm
+            );
+            noteDisplay.innerHTML = formattedNote;
+            
+            // Update search stats
+            updateSearchStats(searchTerm);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchBox').value = '';
+            clearHighlights();
+        }
+
+        function clearHighlights() {
+            const searchStats = document.getElementById('searchStats');
+            searchStats.textContent = '';
+            
+            // Re-render without highlights if we have content
+            if (currentNoteContent) {
+                const noteDisplay = document.getElementById('noteDisplay');
+                const formattedNote = formatNoteWithResults(
+                    currentNoteContent.noteText, 
+                    currentNoteContent.originalNoteText
+                );
+                noteDisplay.innerHTML = formattedNote;
+            }
+        }
+
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return escapeHtml(text);
+            
+            const escapedText = escapeHtml(text);
+            const escapedSearchTerm = escapeHtml(searchTerm);
+            const regex = new RegExp(`(${escapedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            
+            return escapedText.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function updateSearchStats(searchTerm) {
+            const noteDisplay = document.getElementById('noteDisplay');
+            const highlights = noteDisplay.querySelectorAll('.highlight');
+            const count = highlights.length;
+            
+            const searchStats = document.getElementById('searchStats');
+            if (count > 0) {
+                searchStats.textContent = `${count} match${count === 1 ? '' : 'es'}`;
+            } else {
+                searchStats.textContent = 'No matches';
+            }
+        }
+
+        function sortByColumn(columnIndex) {
+            // Toggle sort direction if clicking the same column
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = columnIndex;
+                currentSortDirection = 'asc';
+            }
+
+            // Sort the data
+            csvData.sort((a, b) => {
+                let valueA = a[columnIndex] || '';
+                let valueB = b[columnIndex] || '';
+                
+                // Try to detect if values are numbers
+                const numA = parseFloat(valueA);
+                const numB = parseFloat(valueB);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    // Numeric comparison
+                    return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    // String comparison
+                    valueA = valueA.toString().toLowerCase();
+                    valueB = valueB.toString().toLowerCase();
+                    
+                    if (currentSortDirection === 'asc') {
+                        return valueA.localeCompare(valueB);
+                    } else {
+                        return valueB.localeCompare(valueA);
+                    }
+                }
+            });
+
+            // Update sort indicators in headers
+            updateSortIndicators();
+            
+            // Re-render the table
+            renderTableBody();
+            
+            // Clear current selection since row indices have changed
+            currentSelectedRow = -1;
+            currentRowId = '';
+            document.getElementById('markBar').classList.add('hidden');
+            const noteDisplay = document.getElementById('noteDisplay');
+            noteDisplay.innerHTML = '<div class="no-note">Select a row to view the note text</div>';
+        }
+
+        function updateSortIndicators() {
+            // Remove all sort classes from headers
+            const headers = document.querySelectorAll('th.sortable');
+            headers.forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            // Add sort class to current column
+            if (currentSortColumn !== -1) {
+                const currentHeader = document.querySelector(`th[data-column-index="${currentSortColumn}"]`);
+                if (currentHeader) {
+                    currentHeader.classList.add(currentSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            }
+        }
+
+        function renderTableBody() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            csvData.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                const id = rowId(row);
+                const mark = getMark(id);
+                tr.dataset.rowId = id;
+                if (mark.flagged) tr.classList.add('flagged-row');
+
+                // Actions cell: flag checkbox + View Note (+ annotation indicator)
+                const actionTd = document.createElement('td');
+                actionTd.className = 'sticky-left';
+                const cell = document.createElement('div');
+                cell.className = 'actions-cell';
+
+                const flag = document.createElement('input');
+                flag.type = 'checkbox';
+                flag.className = 'flag-check';
+                flag.title = 'Flag this note';
+                flag.checked = !!mark.flagged;
+                flag.onclick = (e) => e.stopPropagation();
+                flag.onchange = () => {
+                    setMark(id, { flagged: flag.checked });
+                    syncRowMark(id);
+                    if (currentRowId === id) document.getElementById('markFlag').checked = flag.checked;
+                    updateMarkStats();
+                };
+                cell.appendChild(flag);
+
+                const button = document.createElement('button');
+                button.textContent = 'View Note';
+                button.className = 'view-button';
+                button.onclick = () => showNote(rowIndex);
+                cell.appendChild(button);
+
+                if ((mark.annotation || '').trim()) {
+                    const dot = document.createElement('span');
+                    dot.className = 'anno-dot';
+                    dot.textContent = '\u270e';
+                    dot.title = mark.annotation;
+                    cell.appendChild(dot);
+                }
+
+                actionTd.appendChild(cell);
+                tr.appendChild(actionTd);
+
+                // Data cells (exclude note_text and original_note_text columns)
+                row.forEach((cellVal, cellIndex) => {
+                    if (cellIndex !== noteColumnIndex && cellIndex !== originalNoteColumnIndex) {
+                        const td = document.createElement('td');
+                        td.textContent = cellVal || '';
+                        tr.appendChild(td);
+                    }
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // ── Marking + annotation helpers ──
+        function loadMarks() {
+            try { return JSON.parse(localStorage.getItem(MARKS_KEY)) || {}; } catch (e) { return {}; }
+        }
+        function saveMarks() {
+            try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); } catch (e) {}
+        }
+        function getMark(id) {
+            return marks[id] || { flagged: false, annotation: '' };
+        }
+        function setMark(id, patch) {
+            const next = Object.assign({}, getMark(id), patch);
+            if (!next.flagged && !(next.annotation || '').trim()) {
+                delete marks[id];
+            } else {
+                marks[id] = next;
+            }
+            saveMarks();
+        }
+        function rowId(row) {
+            return String((row && row[idColumnIndex] != null ? row[idColumnIndex] : '') || '');
+        }
+        function syncRowMark(id) {
+            const tbody = document.getElementById('tableBody');
+            const tr = Array.from(tbody.children).find(r => r.dataset.rowId === id);
+            if (!tr) return;
+            const m = getMark(id);
+            tr.classList.toggle('flagged-row', !!m.flagged);
+            const cb = tr.querySelector('.flag-check');
+            if (cb) cb.checked = !!m.flagged;
+            const actionsCell = tr.querySelector('.actions-cell');
+            let dot = tr.querySelector('.anno-dot');
+            const hasAnno = !!(m.annotation || '').trim();
+            if (hasAnno && !dot) {
+                dot = document.createElement('span');
+                dot.className = 'anno-dot';
+                dot.textContent = '\u270e';
+                actionsCell.appendChild(dot);
+            } else if (!hasAnno && dot) {
+                dot.remove();
+            }
+            if (hasAnno && dot) dot.title = m.annotation;
+        }
+        function updateMarkStats() {
+            const flagged = Object.values(marks).filter(m => m && m.flagged).length;
+            document.getElementById('markCount').textContent = flagged ? (flagged + ' flagged') : '';
+        }
+        function csvCell(val) {
+            const s = (val == null ? '' : String(val));
+            return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+        function downloadAnnotatedCSV() {
+            if (!originalCsvData.length) return;
+            const outHeaders = headers.concat(['flagged', 'annotation']);
+            const lines = [outHeaders.map(csvCell).join(',')];
+            originalCsvData.forEach(row => {
+                const m = getMark(rowId(row));
+                const cells = row.concat([m.flagged ? 'yes' : '', m.annotation || '']);
+                lines.push(cells.map(csvCell).join(','));
+            });
+            const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'notes_annotated.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
