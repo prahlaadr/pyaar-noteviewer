@@ -4,7 +4,7 @@ A single-file web applet for reading clinical notes through an extraction pipeli
 
 Human-in-the-loop review is built in: flag any row and add a free-text annotation (persisted in `localStorage`), then export everything with **Download annotated CSV**.
 
-**Live demo:** https://pyaar-noteviewer.vercel.app
+**Live demo:** https://quick-muse-x86p.here.now
 
 ## Features
 
